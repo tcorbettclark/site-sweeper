@@ -6,4 +6,7 @@ build/
 .venv/
 screenshots/
 canonical_links.txt
+demo/screenshots/
+demo/canonical_links.txt
+
 .ruff_cache/

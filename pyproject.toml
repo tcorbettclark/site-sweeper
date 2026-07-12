@@ -37,3 +37,8 @@ site-sweeper = "site_sweeper_cli.cli:app"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "asciinema>=2.4.0",
+]

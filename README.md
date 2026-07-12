@@ -110,6 +110,39 @@ It also writes:
 - **Screenshots** to `./screenshots/` (or the configured directory), named `<hostname>_<path>_<size>.png`
 - **Canonical links** to `canonical_links.txt` (or the configured path), containing one normalised path per line — suitable for sitemap generation
 
+## Demo
+
+A small static site is included in `demo/site/` that exercises all of site-sweeper's checks — broken links, missing canonicals, canonical mismatches, and non-canonical links.
+
+To run the demo:
+
+```bash
+bash demo/demo.sh
+```
+
+This starts a local server on port 8765, runs site-sweeper against it (including `--external`), and saves screenshots and canonical links to `demo/`.
+
+### What the demo checks
+
+| Page | Issue |
+| --- | --- |
+| `/` | Proper canonical; links to everything including a broken page and an external link |
+| `/about/` | Proper canonical |
+| `/contact/` | Missing canonical tag |
+| `/blog/post-one/` | Canonical mismatch (points to `/blog/post-two/`) |
+| `/blog/post-two/` | Home links to `/blog/post-two` (no trailing slash) — non-canonical link |
+| `/broken-page/` | 404 — broken link |
+
+### Recording a demo video
+
+To record a terminal demo and generate a GIF (requires [agg](https://github.com/asciinema/agg), `brew install agg`):
+
+```bash
+bash demo/record-demo.sh
+```
+
+This records with [asciinema](https://asciinema.org/) and converts to `demo/demo.gif` automatically.
+
 ## License
 
 [MIT](LICENSE)
