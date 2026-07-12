@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from rich.console import Console
+
 from .crawler import CrawlResult, PageResult
 
 
@@ -11,10 +13,9 @@ def _invert_by_source(data: dict[str, list[str]]) -> dict[str, list[str]]:
     return {k: sorted(v) for k, v in sorted(by_source.items())}
 
 
-def print_summary(result: CrawlResult) -> None:
-    from rich.console import Console
-
-    console = Console()
+def print_summary(result: CrawlResult, console: Console | None = None) -> None:
+    if console is None:
+        console = Console()
 
     pages = list(result.pages.values())
     total = len(pages)

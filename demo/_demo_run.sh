@@ -20,7 +20,7 @@ type_cmd() {
 
 type_cmd "site-sweeper $URL --external"
 
-site-sweeper "$URL" \
+SITE_SWEEPER_SVG="$DEMO_DIR/demo.svg" site-sweeper "$URL" \
     --screenshots \
     --screenshots-dir "$SCREENSHOTS_DIR" \
     --links \
@@ -28,4 +28,4 @@ site-sweeper "$URL" \
     --canonical \
     --external
 
-sleep 10
+sleep 5

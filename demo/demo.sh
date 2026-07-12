@@ -38,7 +38,7 @@ uv run asciinema rec "$CAST_FILE" --overwrite --cols 120 --rows 48 --command "DE
 
 echo ""
 echo "Converting recording to GIF..."
-agg --font-size 14 "$CAST_FILE" "$GIF_FILE"
+agg --font-size 20 --theme github-dark "$CAST_FILE" "$GIF_FILE"
 
 echo ""
 echo "Done!"

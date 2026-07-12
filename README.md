@@ -4,6 +4,8 @@ A command-line tool to sweep a website for all internal links, take screenshots,
 
 Uses [Playwright](https://playwright.dev/python/) (headless Chromium) to render pages, extract links, verify canonical tags, and capture screenshots.
 
+![Site Sweeper demo output](demo/demo.svg)
+
 ## Features
 
 - **Crawl & traverse** — recursively follows all internal links from a starting URL
@@ -95,6 +97,12 @@ site-sweeper http://localhost:8000 --external
 | `--external` / `--no-external` | `--no-external` | Whether to check external links for broken URLs |
 | `--traverse` / `--single-page` | `--traverse` | Traverse all linked pages, or check only the given URL |
 | `--canonical-origin` | *(auto)* | The production origin for canonical checks (defaults to the crawled URL's origin) |
+
+### Environment variables
+
+| Variable | Description |
+| --- | --- |
+| `SITE_SWEEPER_SVG` | When set to a file path, saves the terminal output as an SVG file |
 
 ### Output
 

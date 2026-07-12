@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import shutil
 from urllib.parse import urlparse
 
@@ -69,7 +70,12 @@ def _run_crawl(
 ) -> None:
     _check_playwright_browsers()
 
-    console = Console()
+    save_to_svg = os.environ.get("SITE_SWEEPER_SVG")
+
+    if save_to_svg:
+        console = Console(record=True, width=120)
+    else:
+        console = Console()
 
     canonical_aliases, effective_origin = _derive_canonical_info(url, canonical_origin)
 
@@ -98,12 +104,13 @@ def _run_crawl(
             traverse=traverse,
             check_external=external,
             canonical_aliases=[canonical_aliases] if canonical_aliases else None,
+            console=console,
         )
     )
 
     from .display import print_summary
 
-    print_summary(result)
+    print_summary(result, console=console)
 
     if links and result.pages:
         from .links import write_internal_links
@@ -114,6 +121,9 @@ def _run_crawl(
 
     if screenshots:
         console.print(f"[green]Screenshots saved to[/green] {screenshots_dir}")
+
+    if save_to_svg:
+        console.save_svg(save_to_svg)
 
 
 @app.command()

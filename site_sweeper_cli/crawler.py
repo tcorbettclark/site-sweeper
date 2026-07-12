@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from urllib.parse import urljoin, urlparse
 
 from playwright.async_api import async_playwright
+from rich.console import Console
 
 
 @dataclass
@@ -183,13 +184,13 @@ async def crawl(
     sizes: list[str] | None = None,
     traverse: bool = True,
     canonical_aliases: list[str] | None = None,
+    console: Console | None = None,
 ) -> CrawlResult:
     from .checks import check_canonical_tag
     from .screenshots import VIEWPORT_SIZES, take_screenshot
 
-    from rich.console import Console
-
-    console = Console()
+    if console is None:
+        console = Console()
 
     resolved_sizes = sizes or ["desktop"]
 
