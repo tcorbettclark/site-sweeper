@@ -6,6 +6,8 @@ Uses [Playwright](https://playwright.dev/python/) (headless Chromium) to render 
 
 ![Site Sweeper demo output](demo/demo.svg)
 
+![Site Sweeper demo](demo/demo.gif)
+
 ## Features
 
 - **Crawl & traverse** — recursively follows all internal links from a starting URL
