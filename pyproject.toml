@@ -1,0 +1,18 @@
+[project]
+name = "site-sweeper"
+version = "0.1.0"
+description = "A commandline tool to sweep a website for all internal links, take screenshots, generate sitemap data, and check for broken links."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "typer[all]>=0.15",
+    "rich>=13",
+    "playwright>=1.40",
+]
+
+[project.scripts]
+site-sweeper = "site_sweeper.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
