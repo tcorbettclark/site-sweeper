@@ -8,7 +8,7 @@ from rich.console import Console
 from .crawler import crawl
 
 app = typer.Typer(
-    help="Sweep a website for links, screenshots, sitemap data, and broken links."
+    help="Sweep a website for links, screenshots, link data, and broken links."
 )
 
 
@@ -17,22 +17,24 @@ def _run_crawl(
     delay: int = 100,
     screenshots: bool = True,
     screenshots_dir: str = "./screenshots",
-    sitemap: bool = True,
-    sitemap_path: str = "sitemap.xml",
-    broken_links: bool = True,
+    links: bool = True,
+    links_path: str = "canonical_links.txt",
     canonical: bool = True,
+    traverse: bool = True,
+    canonical_aliases: list[str] | None = None,
 ) -> None:
     console = Console()
-    console.print(f"[bold]Sweeping[/bold] {url} ...\n")
+    console.print(f"[bold]Checking[/bold] {url} ...\n")
 
     result = asyncio.run(
         crawl(
             url,
             delay_ms=delay,
-            check_broken_links=broken_links,
             check_canonical=canonical,
             take_screenshots=screenshots,
             screenshots_dir=screenshots_dir,
+            traverse=traverse,
+            canonical_aliases=canonical_aliases,
         )
     )
 
@@ -40,12 +42,12 @@ def _run_crawl(
 
     print_summary(result)
 
-    if sitemap and result.pages:
-        from .sitemap import generate_sitemap
+    if links and result.pages:
+        from .links import write_internal_links
 
-        urls = list(result.pages.keys())
-        path = generate_sitemap(urls, sitemap_path)
-        console.print(f"\n[green]Sitemap written to[/green] {path}")
+        all_urls = [pr.url for pr in result.pages.values()]
+        path = write_internal_links(all_urls, links_path)
+        console.print(f"\n[green]Canonical links written to[/green] {path}")
 
     if screenshots:
         console.print(f"[green]Screenshots saved to[/green] {screenshots_dir}")
@@ -61,17 +63,24 @@ def sweep(
     screenshots_dir: str = typer.Option(
         "./screenshots", "--screenshots-dir", help="Directory for screenshots"
     ),
-    sitemap: bool = typer.Option(
-        True, "--sitemap/--no-sitemap", help="Generate sitemap.xml"
+    links: bool = typer.Option(
+        True, "--links/--no-links", help="Write canonical links file"
     ),
-    sitemap_path: str = typer.Option(
-        "sitemap.xml", "--sitemap-path", help="Sitemap output path"
-    ),
-    broken_links: bool = typer.Option(
-        True, "--broken-links/--no-broken-links", help="Check broken links"
+    links_path: str = typer.Option(
+        "canonical_links.txt", "--links-path", help="Canonical links output path"
     ),
     canonical: bool = typer.Option(
         True, "--canonical/--no-canonical", help="Check canonical tags"
+    ),
+    traverse: bool = typer.Option(
+        True,
+        "--traverse/--single-page",
+        help="Traverse all linked pages or check only the given URL",
+    ),
+    canonical_alias: list[str] = typer.Option(
+        [],
+        "--canonical-alias",
+        help="Treat this URL's domain as equivalent to the crawled domain for canonical checks",
     ),
 ) -> None:
     _run_crawl(
@@ -79,8 +88,9 @@ def sweep(
         delay=delay,
         screenshots=screenshots,
         screenshots_dir=screenshots_dir,
-        sitemap=sitemap,
-        sitemap_path=sitemap_path,
-        broken_links=broken_links,
+        links=links,
+        links_path=links_path,
         canonical=canonical,
+        traverse=traverse,
+        canonical_aliases=canonical_alias or None,
     )

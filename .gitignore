@@ -5,5 +5,5 @@ dist/
 build/
 .venv/
 screenshots/
-sitemap.xml
+canonical_links.txt
 .ruff_cache/
