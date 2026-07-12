@@ -21,7 +21,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "typer[all]>=0.15",
+    "typer>=0.15",
     "rich>=13",
     "playwright>=1.40",
 ]
@@ -32,7 +32,7 @@ Repository = "https://github.com/tcorbettclark/site-sweeper"
 Issues = "https://github.com/tcorbettclark/site-sweeper/issues"
 
 [project.scripts]
-site-sweeper = "site_sweeper.cli:app"
+site-sweeper = "site_sweeper_cli.cli:app"
 
 [build-system]
 requires = ["hatchling"]

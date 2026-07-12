@@ -1,4 +1,4 @@
-from site_sweeper.cli import app
+from site_sweeper_cli.cli import app
 
 if __name__ == "__main__":
     app()

@@ -161,7 +161,7 @@ wheels = [
 ]
 
 [[package]]
-name = "site-sweeper"
+name = "site-sweeper-cli"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
@@ -174,7 +174,7 @@ dependencies = [
 requires-dist = [
     { name = "playwright", specifier = ">=1.40" },
     { name = "rich", specifier = ">=13" },
-    { name = "typer", extras = ["all"], specifier = ">=0.15" },
+    { name = "typer", specifier = ">=0.15" },
 ]
 
 [[package]]
