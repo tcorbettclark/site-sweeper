@@ -14,7 +14,7 @@ class PageResult:
     canonical: str | None = None
     canonical_issues: list[str] = field(default_factory=list)
     links: list[str] = field(default_factory=list)
-    screenshot_path: str | None = None
+    screenshot_paths: dict[str, str] = field(default_factory=dict)
     is_html: bool = False
 
 
@@ -180,103 +180,117 @@ async def crawl(
     check_external: bool = False,
     take_screenshots: bool = True,
     screenshots_dir: str = "./screenshots",
+    sizes: list[str] | None = None,
     traverse: bool = True,
     canonical_aliases: list[str] | None = None,
 ) -> CrawlResult:
     from .checks import check_canonical_tag
-    from .screenshots import take_screenshot
+    from .screenshots import VIEWPORT_SIZES, take_screenshot
 
     from rich.console import Console
 
     console = Console()
 
+    resolved_sizes = sizes or ["desktop"]
+
     result = CrawlResult()
-    visited: set[str] = set()
     external_links: dict[str, set[str]] = {}
-    queue: asyncio.Queue[str] = asyncio.Queue()
-    await queue.put(start_url)
-    visited.add(start_url)
     total_visited = 0
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(
-            viewport={"width": 1280, "height": 720}, ignore_https_errors=True
-        )
-        page = await context.new_page()
 
-        while not queue.empty():
-            url = await queue.get()
-            total_visited += 1
-            console.print(f"[dim][{total_visited}] {url}[/dim]")
-            page_result = PageResult(url=url)
-
-            try:
-                response = await page.goto(url, wait_until="domcontentloaded")
-                page_result.status = response.status if response else None
-                content_type = (
-                    response.headers.get("content-type", "") if response else ""
-                )
-            except Exception:
-                try:
-                    resp = await context.request.get(url)
-                    page_result.status = resp.status
-                    content_type = resp.headers.get("content-type", "")
-                except Exception:
-                    page_result.status = None
-                    content_type = ""
-                page_result.is_html = _is_html(content_type)
-                result.pages[url] = page_result
-                await asyncio.sleep(delay_ms / 1000)
-                continue
-
-            page_result.is_html = _is_html(content_type)
-
-            if not page_result.is_html:
-                result.pages[url] = page_result
-                await asyncio.sleep(delay_ms / 1000)
-                continue
-
-            await page.wait_for_load_state("networkidle")
-
-            link_hrefs = await page.evaluate(
-                """() => {
-                    return Array.from(document.querySelectorAll('a[href]'))
-                        .map(a => a.href);
-                }"""
+        for size_name in resolved_sizes:
+            viewport = VIEWPORT_SIZES[size_name]
+            context = await browser.new_context(
+                viewport=viewport, ignore_https_errors=True
             )
+            page = await context.new_page()
 
-            normalized_links: list[str] = []
-            for href in link_hrefs:
-                normalized = _normalize_url(url, href)
-                if normalized:
-                    normalized_links.append(normalized)
-            page_result.links = normalized_links
+            visited_sizes: set[str] = set()
+            queue: asyncio.Queue[str] = asyncio.Queue()
+            await queue.put(start_url)
+            visited_sizes.add(start_url)
 
-            if check_canonical:
-                (
-                    page_result.canonical,
-                    page_result.canonical_issues,
-                ) = await check_canonical_tag(page, url, start_url, canonical_aliases)
+            while not queue.empty():
+                url = await queue.get()
+                total_visited += 1
+                console.print(f"[dim][{total_visited}] {url} ({size_name})[/dim]")
 
-            if take_screenshots:
-                page_result.screenshot_path = await take_screenshot(
-                    page, url, screenshots_dir
-                )
+                existing = result.pages.get(url)
+                page_result = existing if existing else PageResult(url=url)
 
-            result.pages[url] = page_result
+                try:
+                    response = await page.goto(url, wait_until="domcontentloaded")
+                    page_result.status = response.status if response else None
+                    content_type = (
+                        response.headers.get("content-type", "") if response else ""
+                    )
+                except Exception:
+                    try:
+                        resp = await context.request.get(url)
+                        page_result.status = resp.status
+                        content_type = resp.headers.get("content-type", "")
+                    except Exception:
+                        page_result.status = None
+                        content_type = ""
+                    page_result.is_html = _is_html(content_type)
+                    result.pages[url] = page_result
+                    await asyncio.sleep(delay_ms / 1000)
+                    continue
 
-            for link in normalized_links:
-                if _same_domain(start_url, link, canonical_aliases):
-                    if traverse and link not in visited:
-                        visited.add(link)
-                        await queue.put(link)
-                elif check_external:
-                    external_links.setdefault(link, set()).add(url)
+                page_result.is_html = _is_html(content_type)
 
-            await asyncio.sleep(delay_ms / 1000)
+                if not page_result.is_html:
+                    result.pages[url] = page_result
+                    await asyncio.sleep(delay_ms / 1000)
+                    continue
+
+                await page.wait_for_load_state("networkidle")
+
+                if not page_result.links:
+                    link_hrefs = await page.evaluate(
+                        """() => {
+                            return Array.from(document.querySelectorAll('a[href]'))
+                                .map(a => a.href);
+                        }"""
+                    )
+
+                    normalized_links: list[str] = []
+                    for href in link_hrefs:
+                        normalized = _normalize_url(url, href)
+                        if normalized:
+                            normalized_links.append(normalized)
+                    page_result.links = normalized_links
+
+                if check_canonical and not page_result.canonical_issues and page_result.canonical is None:
+                    (
+                        page_result.canonical,
+                        page_result.canonical_issues,
+                    ) = await check_canonical_tag(page, url, start_url, canonical_aliases)
+
+                if take_screenshots:
+                    page_result.screenshot_paths[size_name] = await take_screenshot(
+                        page, url, screenshots_dir, size_name
+                    )
+
+                result.pages[url] = page_result
+
+                for link in page_result.links:
+                    if _same_domain(start_url, link, canonical_aliases):
+                        if traverse and link not in visited_sizes:
+                            visited_sizes.add(link)
+                            if link not in result.pages:
+                                await queue.put(link)
+                    elif check_external:
+                        external_links.setdefault(link, set()).add(url)
+
+                await asyncio.sleep(delay_ms / 1000)
+
+            await context.close()
 
         if check_external and external_links:
+            context = await browser.new_context(ignore_https_errors=True)
             console.print("[bold]Checking all external links[/bold]")
             (
                 result.broken_external_links,
@@ -284,6 +298,7 @@ async def crawl(
             ) = await _check_external_links(
                 context, external_links, delay_ms, console, total_visited
             )
+            await context.close()
 
         await browser.close()
 

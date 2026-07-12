@@ -36,6 +36,7 @@ def _run_crawl(
     delay: int = 100,
     screenshots: bool = True,
     screenshots_dir: str = "./screenshots",
+    sizes: list[str] | None = None,
     links: bool = True,
     links_path: str = "canonical_links.txt",
     canonical: bool = True,
@@ -68,6 +69,7 @@ def _run_crawl(
             check_canonical=canonical,
             take_screenshots=screenshots,
             screenshots_dir=screenshots_dir,
+            sizes=sizes,
             traverse=traverse,
             check_external=external,
             canonical_aliases=[canonical_aliases] if canonical_aliases else None,
@@ -99,6 +101,11 @@ def sweep(
     screenshots_dir: str = typer.Option(
         "./screenshots", "--screenshots-dir", help="Directory for screenshots"
     ),
+    size: list[str] = typer.Option(
+        None,
+        "--size",
+        help="Viewport size(s) for screenshots: mobile, tablet, desktop, desktop-lg",
+    ),
     links: bool = typer.Option(
         True, "--links/--no-links", help="Write canonical links file"
     ),
@@ -122,11 +129,26 @@ def sweep(
         help="The production origin for canonical checks (defaults to the crawled URL's origin)",
     ),
 ) -> None:
+    from .screenshots import VIEWPORT_SIZES
+
+    sizes = size or None
+    if sizes:
+        for s in sizes:
+            if s not in VIEWPORT_SIZES:
+                from rich.console import Console
+
+                Console().print(
+                    f"[red]Unknown size '{s}'. Choose from: "
+                    f"{', '.join(VIEWPORT_SIZES.keys())}[/red]"
+                )
+                raise typer.Exit(code=1)
+
     _run_crawl(
         url=url,
         delay=delay,
         screenshots=screenshots,
         screenshots_dir=screenshots_dir,
+        sizes=sizes,
         links=links,
         links_path=links_path,
         canonical=canonical,
