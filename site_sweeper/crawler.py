@@ -22,6 +22,8 @@ class PageResult:
 class CrawlResult:
     pages: dict[str, PageResult] = field(default_factory=dict)
     broken_links: dict[str, list[str]] = field(default_factory=dict)
+    broken_external_links: dict[str, list[str]] = field(default_factory=dict)
+    blocked_external_links: dict[str, list[str]] = field(default_factory=dict)
     non_canonical_links: dict[str, list[str]] = field(default_factory=dict)
     missing_canonical: dict[str, list[str]] = field(default_factory=dict)
 
@@ -117,11 +119,65 @@ def _compute_missing_canonical(
     return missing
 
 
+_BLOCKED_CODES = {403, 429, 999}
+
+
+def _classify_external(status: int | None) -> str | None:
+    if status is None:
+        return "broken"
+    if status < 400:
+        return None
+    if status in _BLOCKED_CODES:
+        return "blocked"
+    if status >= 500:
+        return "broken"
+    if status in (401, 402, 407):
+        return "blocked"
+    return "broken"
+
+
+async def _check_external_links(
+    context,
+    external_links: dict[str, set[str]],
+    delay_ms: int,
+    console,
+    total_visited: int,
+) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    broken: dict[str, list[str]] = {}
+    blocked: dict[str, list[str]] = {}
+    checked: dict[str, int | None] = {}
+    for url in sorted(external_links):
+        total_visited += 1
+        console.print(f"[dim][{total_visited}] {url}[/dim]")
+        try:
+            resp = await context.request.get(url)
+            checked[url] = resp.status
+        except Exception:
+            try:
+                resp = await context.request.head(url)
+                checked[url] = resp.status
+            except Exception:
+                checked[url] = None
+        await asyncio.sleep(delay_ms / 1000)
+
+    for url, sources in external_links.items():
+        status = checked.get(url)
+        classification = _classify_external(status)
+        if classification == "broken":
+            for source in sources:
+                broken.setdefault(url, []).append(source)
+        elif classification == "blocked":
+            for source in sources:
+                blocked.setdefault(url, []).append(source)
+    return broken, blocked
+
+
 async def crawl(
     start_url: str,
     *,
     delay_ms: int = 100,
     check_canonical: bool = True,
+    check_external: bool = False,
     take_screenshots: bool = True,
     screenshots_dir: str = "./screenshots",
     traverse: bool = True,
@@ -136,6 +192,7 @@ async def crawl(
 
     result = CrawlResult()
     visited: set[str] = set()
+    external_links: dict[str, set[str]] = {}
     queue: asyncio.Queue[str] = asyncio.Queue()
     await queue.put(start_url)
     visited.add(start_url)
@@ -209,16 +266,24 @@ async def crawl(
 
             result.pages[url] = page_result
 
-            if traverse:
-                for link in normalized_links:
-                    if (
-                        _same_domain(start_url, link, canonical_aliases)
-                        and link not in visited
-                    ):
+            for link in normalized_links:
+                if _same_domain(start_url, link, canonical_aliases):
+                    if traverse and link not in visited:
                         visited.add(link)
                         await queue.put(link)
+                elif check_external:
+                    external_links.setdefault(link, set()).add(url)
 
             await asyncio.sleep(delay_ms / 1000)
+
+        if check_external and external_links:
+            console.print("[bold]Checking all external links[/bold]")
+            (
+                result.broken_external_links,
+                result.blocked_external_links,
+            ) = await _check_external_links(
+                context, external_links, delay_ms, console, total_visited
+            )
 
         await browser.close()
 

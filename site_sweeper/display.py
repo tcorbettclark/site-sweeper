@@ -20,6 +20,8 @@ def print_summary(result: CrawlResult) -> None:
     total = len(pages)
 
     broken_by_source = _invert_by_source(result.broken_links)
+    broken_external_by_source = _invert_by_source(result.broken_external_links)
+    blocked_external_by_source = _invert_by_source(result.blocked_external_links)
     non_canonical_by_source = _invert_by_source(result.non_canonical_links)
     missing_canonical_by_source = _invert_by_source(result.missing_canonical)
 
@@ -27,7 +29,12 @@ def print_summary(result: CrawlResult) -> None:
     broken_page_count = 0
     for p in pages:
         has_issues = _page_has_issues(
-            p, broken_by_source, non_canonical_by_source, missing_canonical_by_source
+            p,
+            broken_by_source,
+            broken_external_by_source,
+            blocked_external_by_source,
+            non_canonical_by_source,
+            missing_canonical_by_source,
         )
         if p.status and 200 <= p.status < 400 and not has_issues:
             ok_count += 1
@@ -37,12 +44,19 @@ def print_summary(result: CrawlResult) -> None:
     canonical_issue_count = sum(1 for p in pages if p.canonical_issues)
     missing_canonical_count = len(result.missing_canonical)
     non_canonical_count = len(result.non_canonical_links)
+    broken_external_count = len(result.broken_external_links)
+    blocked_external_count = len(result.blocked_external_links)
 
     console.print(f"\n[bold]Sweep complete![/bold] Visited {total} page(s)\n")
 
     for p in pages:
         if not _page_has_issues(
-            p, broken_by_source, non_canonical_by_source, missing_canonical_by_source
+            p,
+            broken_by_source,
+            broken_external_by_source,
+            blocked_external_by_source,
+            non_canonical_by_source,
+            missing_canonical_by_source,
         ):
             continue
 
@@ -82,19 +96,45 @@ def print_summary(result: CrawlResult) -> None:
                 else:
                     console.print(f"    [red]{target_url}[/red]")
 
+        if p.url in broken_external_by_source:
+            targets = broken_external_by_source[p.url]
+            console.print("  Broken external links:")
+            for target_url in targets:
+                console.print(f"    [red]{target_url}[/red]")
+
+        if p.url in blocked_external_by_source:
+            targets = blocked_external_by_source[p.url]
+            console.print("  Blocked external links (likely bot protection):")
+            for target_url in targets:
+                console.print(f"    [magenta]{target_url}[/magenta]")
+
         console.print("")
 
-    console.print(
-        f"[green]{ok_count} OK[/green] | [red]{broken_page_count} broken[/red] | "
-        f"[yellow]{canonical_issue_count} canonical issues[/yellow] | "
-        f"[yellow]{missing_canonical_count} missing canonical[/yellow] | "
-        f"[yellow]{non_canonical_count} non-canonical links[/yellow]"
+    summary_parts = [
+        f"[green]{ok_count} OK[/green]",
+        f"[red]{broken_page_count} broken[/red]",
+    ]
+    if broken_external_count:
+        summary_parts.append(f"[red]{broken_external_count} broken external[/red]")
+    if blocked_external_count:
+        summary_parts.append(
+            f"[magenta]{blocked_external_count} blocked external[/magenta]"
+        )
+    summary_parts.extend(
+        [
+            f"[yellow]{canonical_issue_count} canonical issues[/yellow]",
+            f"[yellow]{missing_canonical_count} missing canonical[/yellow]",
+            f"[yellow]{non_canonical_count} non-canonical links[/yellow]",
+        ]
     )
+    console.print(" | ".join(summary_parts))
 
 
 def _page_has_issues(
     p: PageResult,
     broken_by_source: dict[str, list[str]],
+    broken_external_by_source: dict[str, list[str]],
+    blocked_external_by_source: dict[str, list[str]],
     non_canonical_by_source: dict[str, list[str]],
     missing_canonical_by_source: dict[str, list[str]],
 ) -> bool:
@@ -103,6 +143,10 @@ def _page_has_issues(
     if p.canonical_issues:
         return True
     if p.url in broken_by_source:
+        return True
+    if p.url in broken_external_by_source:
+        return True
+    if p.url in blocked_external_by_source:
         return True
     if p.url in non_canonical_by_source:
         return True

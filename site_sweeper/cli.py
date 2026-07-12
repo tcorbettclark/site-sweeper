@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from urllib.parse import urlparse
 
 import typer
 from rich.console import Console
@@ -12,6 +13,24 @@ app = typer.Typer(
 )
 
 
+def _derive_canonical_info(
+    url: str, canonical_origin: str | None
+) -> tuple[str | None, str]:
+    start = urlparse(url)
+    start_origin = f"{start.scheme}://{start.netloc}"
+
+    if canonical_origin is None:
+        return None, start_origin
+
+    parsed = urlparse(canonical_origin)
+    canonical_base = f"{parsed.scheme}://{parsed.netloc}"
+
+    if parsed.hostname == start.hostname:
+        return None, start_origin
+
+    return canonical_base, start_origin
+
+
 def _run_crawl(
     url: str,
     delay: int = 100,
@@ -20,11 +39,27 @@ def _run_crawl(
     links: bool = True,
     links_path: str = "canonical_links.txt",
     canonical: bool = True,
+    external: bool = False,
     traverse: bool = True,
-    canonical_aliases: list[str] | None = None,
+    canonical_origin: str | None = None,
 ) -> None:
     console = Console()
-    console.print(f"[bold]Checking[/bold] {url} ...\n")
+
+    canonical_aliases, effective_origin = _derive_canonical_info(url, canonical_origin)
+
+    if canonical_aliases:
+        console.print(f"[dim]Canonical origin: {canonical_aliases}[/dim]")
+        console.print("[dim]  So pages fetched from[/dim]")
+        console.print(f"[dim]    {effective_origin}[/dim]")
+        console.print("[dim]  will pass self-referential declarations for[/dim]")
+        console.print(f"[dim]    {canonical_aliases}[/dim]")
+    else:
+        console.print(
+            f"[dim]Assuming canonical origin is {effective_origin} — "
+            f"canonical tags must match this origin[/dim]"
+        )
+
+    console.print(f"\n[bold]Checking internal links starting from[/bold] {url}")
 
     result = asyncio.run(
         crawl(
@@ -34,7 +69,8 @@ def _run_crawl(
             take_screenshots=screenshots,
             screenshots_dir=screenshots_dir,
             traverse=traverse,
-            canonical_aliases=canonical_aliases,
+            check_external=external,
+            canonical_aliases=[canonical_aliases] if canonical_aliases else None,
         )
     )
 
@@ -72,15 +108,18 @@ def sweep(
     canonical: bool = typer.Option(
         True, "--canonical/--no-canonical", help="Check canonical tags"
     ),
+    external: bool = typer.Option(
+        False, "--external/--no-external", help="Check external links for broken URLs"
+    ),
     traverse: bool = typer.Option(
         True,
         "--traverse/--single-page",
         help="Traverse all linked pages or check only the given URL",
     ),
-    canonical_alias: list[str] = typer.Option(
-        [],
-        "--canonical-alias",
-        help="Treat this URL's domain as equivalent to the crawled domain for canonical checks",
+    canonical_origin: str = typer.Option(
+        None,
+        "--canonical-origin",
+        help="The production origin for canonical checks (defaults to the crawled URL's origin)",
     ),
 ) -> None:
     _run_crawl(
@@ -91,6 +130,7 @@ def sweep(
         links=links,
         links_path=links_path,
         canonical=canonical,
+        external=external,
         traverse=traverse,
-        canonical_aliases=canonical_alias or None,
+        canonical_origin=canonical_origin,
     )
