@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
 from urllib.parse import urlparse
 
 import typer
@@ -11,6 +12,28 @@ from .crawler import crawl
 app = typer.Typer(
     help="Sweep a website for links, screenshots, link data, and broken links."
 )
+
+
+def _check_playwright_browsers() -> None:
+    from playwright.sync_api import sync_playwright
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            browser.close()
+    except Exception:
+        console = Console()
+        playwright_cmd = shutil.which("playwright")
+        if playwright_cmd:
+            cmd = "playwright install chromium"
+        else:
+            cmd = "python -m playwright install chromium"
+        console.print(
+            "\n[bold red]Playwright browsers are not installed.[/bold red]\n"
+            "Install the required browser by running:\n\n"
+            f"  [bold]{cmd}[/bold]\n"
+        )
+        raise typer.Exit(code=1)
 
 
 def _derive_canonical_info(
@@ -44,6 +67,8 @@ def _run_crawl(
     traverse: bool = True,
     canonical_origin: str | None = None,
 ) -> None:
+    _check_playwright_browsers()
+
     console = Console()
 
     canonical_aliases, effective_origin = _derive_canonical_info(url, canonical_origin)

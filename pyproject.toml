@@ -3,12 +3,33 @@ name = "site-sweeper"
 version = "0.1.0"
 description = "A commandline tool to sweep a website for all internal links, take screenshots, generate sitemap data, and check for broken links."
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.13"
+authors = [
+    { name = "tcorbettclark" },
+]
+keywords = ["website", "crawler", "broken-links", "canonical", "screenshots", "sitemap"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP :: Site Management",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
 dependencies = [
     "typer[all]>=0.15",
     "rich>=13",
     "playwright>=1.40",
 ]
+
+[project.urls]
+Homepage = "https://github.com/tcorbettclark/site-sweeper"
+Repository = "https://github.com/tcorbettclark/site-sweeper"
+Issues = "https://github.com/tcorbettclark/site-sweeper/issues"
 
 [project.scripts]
 site-sweeper = "site_sweeper.cli:app"
