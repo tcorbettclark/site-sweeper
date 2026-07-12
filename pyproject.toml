@@ -1,6 +1,6 @@
 [project]
 name = "site-sweeper-cli"
-version = "0.1.0"
+version = "0.1.1"
 description = "A commandline tool to sweep a website for all internal links, take screenshots, generate sitemap data, and check for broken links."
 readme = "README.md"
 license = "MIT"
