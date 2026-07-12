@@ -120,7 +120,7 @@ To run the demo:
 bash demo/demo.sh
 ```
 
-This starts a local server on port 8765, runs site-sweeper against it (including `--external`), and saves screenshots and canonical links to `demo/`.
+This starts a local server, records a terminal demo, and generates `demo/demo.cast` and `demo/demo.gif`. It also saves screenshots and canonical links to `demo/`.
 
 ### What the demo checks
 
@@ -135,13 +135,7 @@ This starts a local server on port 8765, runs site-sweeper against it (including
 
 ### Recording a demo video
 
-To record a terminal demo and generate a GIF (requires [agg](https://github.com/asciinema/agg), `brew install agg`):
-
-```bash
-bash demo/record-demo.sh
-```
-
-This records with [asciinema](https://asciinema.org/) and converts to `demo/demo.gif` automatically.
+`bash demo/demo.sh` handles recording automatically. It requires [asciinema](https://asciinema.org/) (installed via `uv sync`) and [agg](https://github.com/asciinema/agg) (`brew install agg`).
 
 ## License
 
